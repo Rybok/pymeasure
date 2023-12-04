@@ -25,6 +25,7 @@
 from warnings import warn
 from pymeasure.instruments import Instrument
 from pymeasure.instruments.validators import strict_discrete_set
+from pymeasure.adapters import SerialAdapter
 
 
 deprecated_text = """
@@ -77,6 +78,8 @@ class HP34401A(Instrument):
             asrl={'baud_rate': 9600, 'data_bits': 7, 'parity': 2},
             **kwargs
         )
+        if type(adapter) == SerialAdapter:
+            self.init_serial()
 
     # Log a deprecated warning for the old function property
     voltage_ac = Instrument.measurement("MEAS:VOLT:AC? DEF,DEF",
@@ -300,6 +303,24 @@ class HP34401A(Instrument):
     )
 
     # System related commands
+    def init_serial(self):
+        self.adapter.write_termination = "\n" # "\r\n" in some cases.
+        self.adapter.read_termination = "\n"
+        self.remote_control()
+
+        serial_settings = self.adapter.connection.get_settings()
+        if serial_settings["stopbits"] != 2:
+            print(f"Serial connection should use 2 stopbits: {serial_settings}")
+
+    def remote_control(self, remote=True, lock=False):
+        if remote:
+            if lock:
+                self.write("SYST:RWL")
+            else:
+                self.write("SYST:REM")
+        else:
+            self.write("SYSTem:LOC")
+
     def beep(self):
         """This command causes the multimeter to beep once."""
         self.write("SYST:BEEP")
