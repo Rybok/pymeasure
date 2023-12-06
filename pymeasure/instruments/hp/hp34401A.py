@@ -303,23 +303,24 @@ class HP34401A(Instrument):
     )
 
     # System related commands
+    remote_local_state = Instrument.setting(
+        "SYST: %s",
+        """ A string property that controls the remote/local state of the
+        function generator. Valid values are: LOC<AL>, REM<OTE>, RWL<OCK>.
+        This setting can only be set. """,
+        validator=joined_validators(
+            strict_discrete_set, string_validator
+        ),
+        values=[["LOC", "LOCAL", "REM", "REMOTE", "RWL", "RWLOCK"], ],
+
     def init_serial(self):
         self.adapter.write_termination = "\n" # "\r\n" in some cases.
         self.adapter.read_termination = "\n"
-        self.remote_control()
+        self.remote_local_state = "REM"
 
         serial_settings = self.adapter.connection.get_settings()
         if serial_settings["stopbits"] != 2:
             print(f"Serial connection should use 2 stopbits: {serial_settings}")
-
-    def remote_control(self, remote=True, lock=False):
-        if remote:
-            if lock:
-                self.write("SYST:RWL")
-            else:
-                self.write("SYST:REM")
-        else:
-            self.write("SYSTem:LOC")
 
     def beep(self):
         """This command causes the multimeter to beep once."""
